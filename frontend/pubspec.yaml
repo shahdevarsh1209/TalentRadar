@@ -1,0 +1,36 @@
+name: talentradar
+description: "TalentRadar — hyper-local professional networking and job discovery."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.8.1
+  http: ^1.5.0
+  shared_preferences: ^2.5.3
+  geolocator: ^13.0.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    # Variable fonts: one file carries every weight on the wght axis, so the
+    # theme asks for weights through FontVariation as well as fontWeight.
+    - family: Sora
+      fonts:
+        - asset: assets/fonts/Sora-Variable.ttf
+    - family: WorkSans
+      fonts:
+        - asset: assets/fonts/WorkSans-Variable.ttf

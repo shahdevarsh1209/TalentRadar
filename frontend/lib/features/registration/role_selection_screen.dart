@@ -111,8 +111,9 @@ class RoleSelectionScreen extends ConsumerWidget {
             ),
           const SizedBox(height: 10),
           Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text('Already have an account?', style: TrType.bodySmall),
                 TrTextAction(

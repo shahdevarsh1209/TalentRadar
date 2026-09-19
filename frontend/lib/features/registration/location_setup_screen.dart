@@ -19,7 +19,10 @@ import '../../widgets/tr_scaffold.dart';
 /// Precise location is never demanded: denying the permission, or skipping the
 /// screen outright, both leave a working app.
 class LocationSetupScreen extends ConsumerStatefulWidget {
-  const LocationSetupScreen({super.key});
+  const LocationSetupScreen({super.key, this.returnAfterSave = false});
+
+  /// Opened from the Me tab to change location: save, then go back.
+  final bool returnAfterSave;
 
   @override
   ConsumerState<LocationSetupScreen> createState() => _LocationSetupScreenState();
@@ -67,6 +70,11 @@ class _LocationSetupScreenState extends ConsumerState<LocationSetupScreen> {
   Future<void> _continue() async {
     final ok = await ref.read(registrationProvider.notifier).submitLocation();
     if (!mounted || !ok) return;
+    if (widget.returnAfterSave) {
+      ref.read(registrationProvider.notifier).reset();
+      context.pop();
+      return;
+    }
     context.push(Routes.success);
   }
 
@@ -81,7 +89,7 @@ class _LocationSetupScreenState extends ConsumerState<LocationSetupScreen> {
       title: 'Discover Opportunities Near You',
       subtitle:
           'TalentRadar uses your approximate area to show relevant jobs, professionals and events nearby.',
-      showBack: false,
+      showBack: widget.returnAfterSave,
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -92,7 +100,7 @@ class _LocationSetupScreenState extends ConsumerState<LocationSetupScreen> {
             enabled: choice != null,
             onPressed: _continue,
           ),
-          if (choice == null)
+          if (choice == null && !widget.returnAfterSave)
             TrTextAction(label: 'Skip for now', onPressed: _skip)
           else
             const SizedBox(height: 6),
@@ -209,7 +217,12 @@ class _PrivacyNote extends StatelessWidget {
             children: [
               const Icon(Icons.shield_outlined, size: 18, color: TrColors.plumInk),
               const SizedBox(width: 9),
-              Text('How we handle your location', style: TrType.itemTitle.copyWith(fontSize: 14)),
+              Expanded(
+                child: Text(
+                  'How we handle your location',
+                  style: TrType.itemTitle.copyWith(fontSize: 14),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),

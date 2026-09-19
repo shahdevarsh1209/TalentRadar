@@ -206,7 +206,10 @@ class RegistrationController extends StateNotifier<RegistrationState> {
     state = state.copyWith(status: SubmitStatus.submitting, clearError: true);
     try {
       final repository = _ref.read(locationRepositoryProvider);
-      final session = state.role == UserRole.recruiter
+      // The signed-in role decides the endpoint: the registration role is
+      // cleared once onboarding ends, but location can be changed later.
+      final role = _ref.read(sessionProvider)?.user.role ?? state.role;
+      final session = role == UserRole.recruiter
           ? await repository.setHiringLocation(choice, radiusKm: hiringRadiusKm)
           : await repository.setCandidateLocation(choice);
       _ref.read(sessionProvider.notifier).update(session);

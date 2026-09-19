@@ -106,10 +106,14 @@ class TrWordmark extends StatelessWidget {
           foreground: onDark ? TrColors.plumInk : TrColors.lime,
         ),
         const SizedBox(width: 9),
-        Text(
-          'TalentRadar',
-          style: (textStyle ?? TrType.wordmark).copyWith(
-            color: onDark ? Colors.white : TrColors.plumInk,
+        Flexible(
+          child: Text(
+            'TalentRadar',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: (textStyle ?? TrType.wordmark).copyWith(
+              color: onDark ? Colors.white : TrColors.plumInk,
+            ),
           ),
         ),
       ],

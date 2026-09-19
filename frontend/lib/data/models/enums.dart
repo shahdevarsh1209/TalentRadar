@@ -32,6 +32,14 @@ enum ExperienceLevel {
   final String wire;
   final String label;
 
+  /// Compact figure for stat tiles: "0", "<1", "2–3", "12+".
+  String get short => switch (this) {
+        ExperienceLevel.fresher => '0',
+        ExperienceLevel.lessThanOne => '<1',
+        ExperienceLevel.twelvePlus => '12+',
+        _ => label.replaceAll(' years', ''),
+      };
+
   static ExperienceLevel fromWire(String? value) => ExperienceLevel.values.firstWhere(
         (level) => level.wire == value,
         orElse: () => ExperienceLevel.fresher,

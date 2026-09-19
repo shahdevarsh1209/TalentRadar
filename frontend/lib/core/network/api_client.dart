@@ -51,6 +51,18 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? body}) {
+    final uri = Uri.parse('$_baseUrl$path');
+    return _send(
+      () => _client.patch(uri, headers: _headers, body: jsonEncode(body ?? {})),
+    );
+  }
+
+  Future<Map<String, dynamic>> delete(String path) {
+    final uri = Uri.parse('$_baseUrl$path');
+    return _send(() => _client.delete(uri, headers: _headers));
+  }
+
   Future<Map<String, dynamic>> _send(Future<http.Response> Function() request) async {
     http.Response response;
     try {

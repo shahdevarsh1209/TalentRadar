@@ -191,8 +191,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                     'Resend code in ${_secondsLeft}s',
                     style: TrType.bodySmall.copyWith(fontSize: 13),
                   )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
+                : Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text("Didn't get it?", style: TrType.bodySmall.copyWith(fontSize: 13)),
                       TrTextAction(label: 'Resend code', onPressed: _resend),

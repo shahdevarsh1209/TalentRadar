@@ -25,21 +25,30 @@ Future<void> pumpUntil(
   while (DateTime.now().isBefore(deadline)) {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
     await tester.pump(const Duration(milliseconds: 120));
-    if (finder.evaluate().isNotEmpty) return;
+    if (finder.evaluate().isNotEmpty) {
+      // Let any route transition finish; routes ignore taps while animating.
+      await tester.pump(const Duration(milliseconds: 600));
+      return;
+    }
   }
   throw TestFailure('Timed out waiting for $finder');
 }
 
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+  // Tapping outside a field closes the keyboard first, as it does on a phone.
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pump(const Duration(milliseconds: 300));
   await tester.ensureVisible(finder.first);
-  await tester.pump();
+  // A focused field animates its caret into view; scroll views ignore taps
+  // until that animation ends.
+  await tester.pump(const Duration(seconds: 1));
   await tester.tap(finder.first);
   await tester.pump();
 }
 
 Future<void> pickTitle(WidgetTester tester, String fieldHint, String query, String title) async {
   await tapVisible(tester, find.text(fieldHint));
-  await pumpUntil(tester, find.textContaining('selected').hitTestable());
+  await pumpUntil(tester, find.byType(DraggableScrollableSheet));
   await tester.enterText(find.byType(TextField).last, query);
   await pumpUntil(tester, find.text(title));
   await tester.tap(find.text(title).last);
@@ -59,10 +68,14 @@ Future<void> verifyWithDevCode(WidgetTester tester) async {
 
 Future<void> chooseManualArea(WidgetTester tester, String cardTitle, String area) async {
   await tapVisible(tester, find.text(cardTitle));
-  await pumpUntil(tester, find.text(area));
-  await tester.tap(find.text(area).first);
+  await pumpUntil(tester, find.byType(DraggableScrollableSheet));
+  await tester.enterText(find.byType(TextField).last, area);
+  final row = find.descendant(of: find.byType(ListView), matching: find.text(area));
+  await pumpUntil(tester, row);
+  await tester.tap(row.first);
   await tester.pump();
-  await tester.tap(find.textContaining('Use '));
+  // The sheet's CTA reads 'Use <area>, <city>'.
+  await tester.tap(find.textContaining(RegExp(r'^Use .+, ')));
   await tester.pumpAndSettle();
 }
 
@@ -75,6 +88,16 @@ Future<void> bootApp(WidgetTester tester) async {
 
   await tester.pumpWidget(const ProviderScope(child: TalentRadarApp()));
   await pumpUntil(tester, find.text('Get started'));
+}
+
+/// Unmounts the app and lets in-flight requests (the badge poller) finish, so
+/// no request timeout timer outlives the test.
+Future<void> finish(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  for (var i = 0; i < 10; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(seconds: 1));
+  }
 }
 
 void main() {
@@ -96,6 +119,8 @@ void main() {
       find.widgetWithText(TextField, 'you@example.com'),
       'aditi.e2e.$stamp@gmail.com',
     );
+    // Live availability check against the API marks the address as free.
+    await pumpUntil(tester, find.byIcon(Icons.check_circle_rounded));
     await pickTitle(tester, 'Search your job title...', 'software', 'Software Support Executive');
     expect(find.text('Software Support Executive'), findsOneWidget);
     await pickTitle(tester, 'Add another title', 'erp', 'ERP Functional Consultant');
@@ -123,6 +148,7 @@ void main() {
     await tapVisible(tester, find.text('Open my radar'));
     await pumpUntil(tester, find.text('Near you today'));
     expect(find.textContaining('HSR Layout, Bengaluru'), findsOneWidget);
+    await finish(tester);
   }, skip: !_enabled);
 
   testWidgets('recruiter: form → OTP → hiring location → ready screen', (tester) async {
@@ -139,6 +165,7 @@ void main() {
       find.widgetWithText(TextField, 'hr@company.com'),
       'riya.e2e.$stamp@abctechnologies.com',
     );
+    await pumpUntil(tester, find.byIcon(Icons.check_circle_rounded));
     await pickTitle(tester, 'Search roles you are hiring for...', 'account', 'Senior Accountant');
     await pickTitle(tester, 'Add another title', 'flutter', 'Flutter Developer');
 
@@ -154,11 +181,14 @@ void main() {
     await tapVisible(tester, find.text('Continue'));
 
     await pumpUntil(tester, find.text('Your Hiring Profile is Ready'));
-    expect(find.text('ABC Technologies'), findsOneWidget);
+    // An earlier registration created 'ABC Technologies Pvt Ltd'; the same
+    // company under a different spelling is joined, not duplicated.
+    expect(find.textContaining('ABC Technologies'), findsWidgets);
     expect(find.text('Senior Accountant'), findsOneWidget);
     expect(find.textContaining('Prahlad Nagar, Ahmedabad · within 25 km'), findsOneWidget);
     expect(find.text('Explore Nearby Talent'), findsOneWidget);
     expect(find.text('Complete Company Profile'), findsOneWidget);
+    await finish(tester);
   }, skip: !_enabled);
 
   testWidgets('duplicate email is flagged on the form before submitting', (tester) async {

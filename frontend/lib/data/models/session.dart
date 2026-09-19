@@ -90,6 +90,10 @@ class CandidateProfile {
     required this.location,
     this.headline = '',
     this.profileCompletion = 0,
+    this.availableToday = false,
+    this.openToConnect = true,
+    this.walkInAlerts = true,
+    this.skills = const [],
   });
 
   final String name;
@@ -103,6 +107,12 @@ class CandidateProfile {
   final bool stealthMode;
   final LocationSummary location;
   final int profileCompletion;
+
+  /// Set by the centre 'go live' button; true until midnight.
+  final bool availableToday;
+  final bool openToConnect;
+  final bool walkInAlerts;
+  final List<String> skills;
 
   factory CandidateProfile.fromJson(Map<String, dynamic> json) => CandidateProfile(
         name: '${json['name'] ?? ''}',
@@ -122,6 +132,10 @@ class CandidateProfile {
         stealthMode: json['stealthMode'] == true,
         location: LocationSummary.fromJson(json['location'] as Map<String, dynamic>?),
         profileCompletion: (json['profileCompletion'] as num?)?.toInt() ?? 0,
+        availableToday: json['availableToday'] == true,
+        openToConnect: json['openToConnect'] != false,
+        walkInAlerts: json['walkInAlerts'] != false,
+        skills: (json['skills'] as List? ?? []).map((skill) => '$skill').toList(),
       );
 
   String get initials => _initialsOf(name);

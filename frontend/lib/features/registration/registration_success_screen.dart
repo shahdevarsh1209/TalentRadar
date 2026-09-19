@@ -46,16 +46,8 @@ class _RegistrationSuccessScreenState extends ConsumerState<RegistrationSuccessS
   }
 
   void _completeCompanyProfile() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Company profile editing opens from Me → Company once your radar is set up.',
-          ),
-        ),
-      );
     _openRadar();
+    context.push(Routes.company);
   }
 
   @override

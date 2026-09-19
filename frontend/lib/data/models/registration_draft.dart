@@ -174,6 +174,9 @@ class LocationChoice {
         state: '${json['state'] ?? ''}',
         country: '${json['country'] ?? 'India'}',
         label: '${json['label'] ?? ''}',
+        // Area centre from the directory; the server blurs it before storing.
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
       );
 
   LocationChoice copyWith({String? pincode}) => LocationChoice(

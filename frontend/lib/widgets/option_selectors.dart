@@ -174,7 +174,7 @@ class ExperienceSelector extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('Experience', style: TrType.label),
+            Flexible(child: Text('Experience', style: TrType.label)),
             const SizedBox(width: 7),
             Text('Optional', style: TrType.itemMeta.copyWith(fontSize: 11)),
           ],
@@ -288,7 +288,7 @@ class OpenToWorkSelector extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text('Open to Work', style: TrType.label),
+            Flexible(child: Text('Open to Work', style: TrType.label)),
             const SizedBox(width: 7),
             Text('Optional', style: TrType.itemMeta.copyWith(fontSize: 11)),
           ],

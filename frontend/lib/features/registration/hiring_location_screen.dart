@@ -20,7 +20,10 @@ import '../../widgets/tr_scaffold.dart';
 /// The distinction is stated on screen because it changes what gets published:
 /// an office address is business information and is shown as given.
 class HiringLocationScreen extends ConsumerStatefulWidget {
-  const HiringLocationScreen({super.key});
+  const HiringLocationScreen({super.key, this.returnAfterSave = false});
+
+  /// Opened from the Me tab to change location: save, then go back.
+  final bool returnAfterSave;
 
   @override
   ConsumerState<HiringLocationScreen> createState() => _HiringLocationScreenState();
@@ -79,6 +82,11 @@ class _HiringLocationScreenState extends ConsumerState<HiringLocationScreen> {
         .read(registrationProvider.notifier)
         .submitLocation(hiringRadiusKm: _radiusKm);
     if (!mounted || !ok) return;
+    if (widget.returnAfterSave) {
+      ref.read(registrationProvider.notifier).reset();
+      context.pop();
+      return;
+    }
     context.push(Routes.success);
   }
 
@@ -91,7 +99,7 @@ class _HiringLocationScreenState extends ConsumerState<HiringLocationScreen> {
       title: 'Where Are You Hiring?',
       subtitle:
           'Set the office or city you are hiring for. Candidates are matched against this location.',
-      showBack: false,
+      showBack: widget.returnAfterSave,
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -102,7 +110,7 @@ class _HiringLocationScreenState extends ConsumerState<HiringLocationScreen> {
             enabled: choice != null,
             onPressed: _continue,
           ),
-          if (choice == null)
+          if (choice == null && !widget.returnAfterSave)
             TrTextAction(
               label: 'Skip for now',
               onPressed: () => context.push(Routes.success),

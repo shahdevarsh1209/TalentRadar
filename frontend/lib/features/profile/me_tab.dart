@@ -50,6 +50,19 @@ class MeTab extends ConsumerWidget {
         const SizedBox(height: 22),
         if (session.isCandidate) ..._candidateMenu(context, session.candidate!) else ..._recruiterMenu(context, session.recruiter!),
         const SizedBox(height: 22),
+        Text('SUPPORT', style: TrType.eyebrow),
+        const SizedBox(height: 10),
+        _MenuGroup(
+          children: [
+            _MenuItem(
+              icon: Icons.help_outline_rounded,
+              title: 'Help Center',
+              subtitle: 'Privacy, visibility, walk-ins and invites',
+              onTap: () => context.push(Routes.help),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
         _MenuGroup(
           children: [
             _MenuItem(
@@ -110,6 +123,12 @@ class MeTab extends ConsumerWidget {
                   : 'Visible to ${profile.profileVisibility.label.toLowerCase()}',
               onTap: () => context.push(Routes.privacy),
             ),
+            _MenuItem(
+              icon: Icons.block_rounded,
+              title: 'Blocked accounts',
+              subtitle: 'People you and they cannot see',
+              onTap: () => context.push(Routes.blocked),
+            ),
           ],
         ),
       ];
@@ -150,6 +169,19 @@ class MeTab extends ConsumerWidget {
               title: 'Connections',
               subtitle: 'Requests and people you know',
               onTap: () => context.push(Routes.requests),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        Text('PRIVACY', style: TrType.eyebrow),
+        const SizedBox(height: 10),
+        _MenuGroup(
+          children: [
+            _MenuItem(
+              icon: Icons.block_rounded,
+              title: 'Blocked accounts',
+              subtitle: 'People you and they cannot see',
+              onTap: () => context.push(Routes.blocked),
             ),
           ],
         ),

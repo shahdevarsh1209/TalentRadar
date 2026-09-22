@@ -17,6 +17,30 @@ import 'primary_cta.dart';
 /// Free text is deliberately not accepted: every selection is a master record,
 /// which is what lets a candidate's "Software Support Executive" and a
 /// recruiter's be matched later without fuzzy string work.
+/// Opens the job-title search on its own, for callers that want a picked title
+/// rather than the full selector field — the search filters, for instance.
+/// Returns null if dismissed.
+Future<List<JobTitle>?> showJobTitlePicker(
+  BuildContext context, {
+  required List<JobTitle> selected,
+  int maxSelection = 1,
+  String title = 'Job Title',
+  String hint = 'Search your job title...',
+}) {
+  return showModalBottomSheet<List<JobTitle>>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: TrColors.canvas,
+    builder: (_) => _JobTitleSearchSheet(
+      initialSelection: selected,
+      maxSelection: maxSelection,
+      title: title,
+      hint: hint,
+    ),
+  );
+}
+
 class JobTitleSelector extends StatelessWidget {
   const JobTitleSelector({
     super.key,

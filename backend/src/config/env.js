@@ -13,6 +13,8 @@ const env = {
   exposeOtp: (process.env.EXPOSE_OTP || 'true') === 'true',
   otpTtlMinutes: Number(process.env.OTP_TTL_MINUTES || 10),
   otpResendSeconds: Number(process.env.OTP_RESEND_SECONDS || 45),
+  // Register/login attempts per IP per 15 minutes. Keep low in production.
+  authRateLimit: Number(process.env.AUTH_RATE_LIMIT || 20),
 };
 
 if (env.nodeEnv === 'production' && env.jwtSecret.includes('change-me')) {

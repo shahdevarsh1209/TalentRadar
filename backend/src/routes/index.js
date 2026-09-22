@@ -9,6 +9,11 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const authController = require('../controllers/authController');
 const locationController = require('../controllers/locationController');
+const jobsController = require('../controllers/jobsController');
+const candidatesController = require('../controllers/candidatesController');
+const socialController = require('../controllers/socialController');
+const profilesController = require('../controllers/profilesController');
+const searchController = require('../controllers/searchController');
 const jobTitleService = require('../services/jobTitleService');
 const {
   EXPERIENCE_LEVELS,
@@ -19,13 +24,14 @@ const {
   MAX_HIRING_PROFILES,
 } = require('../utils/constants');
 const schemas = require('../controllers/schemas');
+const env = require('../config/env');
 
 const router = express.Router();
 
 // Registration and OTP endpoints are the abuse-prone ones; search is not.
 const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: env.authRateLimit,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -149,5 +155,123 @@ router.put(
   validate(schemas.recruiterLocationSchema),
   locationController.setHiringLocation
 );
+
+// ── Jobs ────────────────────────────────────────────────────────────────────
+const candidateOnly = [requireAuth, requireRole('candidate')];
+const recruiterOnly = [requireAuth, requireRole('recruiter')];
+
+router.get('/jobs', requireAuth, validate(schemas.jobListSchema, 'query'), jobsController.listJobs);
+router.post('/jobs', ...recruiterOnly, validate(schemas.createJobSchema), jobsController.createJob);
+router.get('/jobs/:jobId', requireAuth, jobsController.getJob);
+router.patch(
+  '/jobs/:jobId/status',
+  ...recruiterOnly,
+  validate(schemas.jobStatusSchema),
+  jobsController.setJobStatus
+);
+router.post('/jobs/:jobId/interest', ...candidateOnly, jobsController.expressInterest);
+router.get('/jobs/:jobId/interests', ...recruiterOnly, jobsController.jobInterests);
+router.get('/recruiters/me/jobs', ...recruiterOnly, jobsController.myJobs);
+
+// ── Candidates & recruiters ─────────────────────────────────────────────────
+router.get(
+  '/candidates/nearby',
+  ...recruiterOnly,
+  validate(schemas.candidateSearchSchema, 'query'),
+  candidatesController.nearbyCandidates
+);
+router.get('/candidates/me/insights', ...candidateOnly, candidatesController.candidateInsights);
+router.put(
+  '/candidates/me/availability',
+  ...candidateOnly,
+  validate(schemas.availabilitySchema),
+  candidatesController.setAvailability
+);
+router.put(
+  '/candidates/me/privacy',
+  ...candidateOnly,
+  validate(schemas.privacySchema),
+  candidatesController.updatePrivacy
+);
+router.put(
+  '/candidates/me/profile',
+  ...candidateOnly,
+  validate(schemas.candidateProfileUpdateSchema),
+  candidatesController.updateCandidateProfile
+);
+router.get('/candidates/:userId', requireAuth, candidatesController.candidateProfile);
+router.put(
+  '/recruiters/me/profile',
+  ...recruiterOnly,
+  validate(schemas.recruiterProfileUpdateSchema),
+  candidatesController.updateRecruiterProfile
+);
+router.get('/companies/mine', ...recruiterOnly, candidatesController.myCompany);
+router.put(
+  '/companies/mine',
+  ...recruiterOnly,
+  validate(schemas.companyUpdateSchema),
+  candidatesController.updateCompany
+);
+
+// Registered after every literal /recruiters/... and /companies/... path above,
+// so "me" and "mine" are never mistaken for an id.
+router.get('/recruiters/:userId', requireAuth, profilesController.recruiterProfile);
+router.get('/companies/:companyId', requireAuth, profilesController.companyProfile);
+
+// ── Search ──────────────────────────────────────────────────────────────────
+router.get('/search', requireAuth, validate(schemas.searchSchema, 'query'), searchController.search);
+
+// ── Safety ──────────────────────────────────────────────────────────────────
+router.get('/blocks', requireAuth, profilesController.listBlocks);
+router.put('/blocks', requireAuth, validate(schemas.blockSchema), profilesController.setBlock);
+router.post('/reports', requireAuth, validate(schemas.reportSchema), profilesController.createReport);
+
+// ── Saved, connections, chat ────────────────────────────────────────────────
+router.get('/saved', requireAuth, socialController.listSaved);
+router.put('/saved', requireAuth, validate(schemas.saveItemSchema), socialController.saveItem);
+router.delete('/saved/:kind/:refId', requireAuth, socialController.unsaveItem);
+
+router.get('/connections', requireAuth, socialController.listConnections);
+router.post(
+  '/connections',
+  requireAuth,
+  validate(schemas.connectionRequestSchema),
+  socialController.requestConnection
+);
+router.post(
+  '/connections/:connectionId/respond',
+  requireAuth,
+  validate(schemas.connectionResponseSchema),
+  socialController.respondToConnection
+);
+
+router.get('/conversations', requireAuth, socialController.listConversations);
+router.post(
+  '/conversations',
+  requireAuth,
+  validate(schemas.startConversationSchema),
+  socialController.startConversation
+);
+router.get('/conversations/:conversationId/messages', requireAuth, socialController.listMessages);
+router.post(
+  '/conversations/:conversationId/messages',
+  requireAuth,
+  validate(schemas.sendMessageSchema),
+  socialController.sendMessage
+);
+router.post(
+  '/conversations/:conversationId/invites',
+  ...recruiterOnly,
+  validate(schemas.inviteSchema),
+  socialController.sendInvite
+);
+router.post(
+  '/messages/:messageId/invite-response',
+  requireAuth,
+  validate(schemas.inviteResponseSchema),
+  socialController.respondToInvite
+);
+router.get('/me/badges', requireAuth, socialController.badges);
 
 module.exports = router;

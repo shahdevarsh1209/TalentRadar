@@ -59,6 +59,18 @@ void openJobDetails(BuildContext context, Job job) {
   );
 }
 
+/// The same sheet where only the id is known — a hiring role on a profile, or
+/// a role referenced from a chat message. The sheet loads the rest itself.
+void openJobDetailsById(BuildContext context, String jobId) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: TrColors.canvas,
+    builder: (_) => JobDetailSheet(jobId: jobId),
+  );
+}
+
 // ── Cards ────────────────────────────────────────────────────────────────────
 
 String _meta(Job job) => [
@@ -289,21 +301,25 @@ class _SmallButton extends StatelessWidget {
 // ── Details sheet (the design's walk-in pin sheet) ───────────────────────────
 
 class JobDetailSheet extends ConsumerStatefulWidget {
-  const JobDetailSheet({super.key, required this.jobId, required this.preview});
+  const JobDetailSheet({super.key, required this.jobId, this.preview});
 
   final String jobId;
 
-  /// Shown immediately; replaced by the fresh copy once it loads.
-  final Job preview;
+  /// Shown immediately where the caller already has the job; replaced by the
+  /// fresh copy once it loads. Null when opened from an id alone, and the
+  /// sheet shows a loading state until the fetch returns.
+  final Job? preview;
 
   @override
   ConsumerState<JobDetailSheet> createState() => _JobDetailSheetState();
 }
 
 class _JobDetailSheetState extends ConsumerState<JobDetailSheet> {
-  late Job _job = widget.preview;
+  late Job? _job = widget.preview;
   String _postedBy = '';
+  String _recruiterUserId = '';
   bool _busy = false;
+  Object? _loadError;
 
   @override
   void initState() {
@@ -320,28 +336,35 @@ class _JobDetailSheetState extends ConsumerState<JobDetailSheet> {
         _postedBy = [result.postedBy.name, result.postedBy.headline]
             .where((part) => part.isNotEmpty)
             .join(' · ');
+        _recruiterUserId = result.postedBy.userId;
       });
-    } catch (_) {
-      // The preview is already on screen; a failed refresh is not worth an error.
+    } catch (error) {
+      // With a preview already on screen a failed refresh is not worth an
+      // error; opened from an id alone, there is nothing else to show.
+      if (mounted && _job == null) setState(() => _loadError = error);
     }
   }
 
   Future<void> _save() async {
+    final job = _job;
+    if (job == null) return;
     setState(() => _busy = true);
-    await toggleSaveJob(context, ref, _job);
+    await toggleSaveJob(context, ref, job);
     if (mounted) {
       setState(() {
-        _job = _job.copyWith(saved: !_job.saved);
+        _job = job.copyWith(saved: !job.saved);
         _busy = false;
       });
     }
   }
 
   Future<void> _interested() async {
+    final job = _job;
+    if (job == null) return;
     setState(() => _busy = true);
     final navigator = Navigator.of(context);
     try {
-      final conversationId = await ref.read(jobsRepositoryProvider).expressInterest(_job.jobId);
+      final conversationId = await ref.read(jobsRepositoryProvider).expressInterest(job.jobId);
       ref.refreshHome();
       navigator.pop();
       if (mounted) {
@@ -359,6 +382,31 @@ class _JobDetailSheetState extends ConsumerState<JobDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final job = _job;
+    // Opened from an id alone: nothing to show until the fetch lands.
+    if (job == null) {
+      return SizedBox(
+        height: 260,
+        child: _loadError == null
+            ? const Center(child: CircularProgressIndicator(color: TrColors.plumInk))
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: EmptyState(
+                  icon: Icons.work_off_outlined,
+                  title: 'Could not open this role',
+                  message: errorText(_loadError!),
+                  actionLabel: 'Try again',
+                  onAction: () {
+                    setState(() => _loadError = null);
+                    _load();
+                  },
+                ),
+              ),
+      );
+    }
+    return _content(context, job);
+  }
+
+  Widget _content(BuildContext context, Job job) {
     final walkIn = job.walkIn;
     final salary = Fmt.salary(job.salaryMin, job.salaryMax);
 
@@ -468,7 +516,29 @@ class _JobDetailSheetState extends ConsumerState<JobDetailSheet> {
                   const SizedBox(height: 18),
                   Text('POSTED BY', style: TrType.eyebrow),
                   const SizedBox(height: 8),
-                  Text(_postedBy, style: TrType.bodySmall.copyWith(color: TrColors.plumInk)),
+                  // Tapping the recruiter opens their profile — a job should
+                  // always lead to the person behind it.
+                  InkWell(
+                    onTap: _recruiterUserId.isEmpty
+                        ? null
+                        : () => context.push(Routes.recruiter(_recruiterUserId)),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _postedBy,
+                              style: TrType.bodySmall.copyWith(color: TrColors.plumInk),
+                            ),
+                          ),
+                          if (_recruiterUserId.isNotEmpty)
+                            const Icon(Icons.chevron_right_rounded, color: TrColors.icon, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 8),
               ],

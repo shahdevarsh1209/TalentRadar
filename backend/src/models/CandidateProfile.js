@@ -52,6 +52,12 @@ const candidateProfileSchema = new mongoose.Schema(
     // Ninja mode. Overrides visibility and removes the candidate from radar results.
     stealthMode: { type: Boolean, default: false },
     skills: { type: [String], default: [] },
+    // Set by the centre 'go live' button; the candidate shows as available
+    // today until this passes. Null means not currently live.
+    availableUntil: { type: Date, default: null },
+    // Privacy screen preferences.
+    openToConnect: { type: Boolean, default: true },
+    walkInAlerts: { type: Boolean, default: true },
     location: { type: locationSchema, default: () => ({}) },
     profileCompletion: { type: Number, default: 0, min: 0, max: 100 },
   },
@@ -67,6 +73,10 @@ candidateProfileSchema.methods.isDiscoverable = function isDiscoverable() {
   if (this.stealthMode) return false;
   if (this.openToWork === 'not_looking') return false;
   return ['everyone', 'recruiters_only'].includes(this.profileVisibility);
+};
+
+candidateProfileSchema.methods.isAvailableToday = function isAvailableToday() {
+  return Boolean(this.availableUntil && this.availableUntil.getTime() > Date.now());
 };
 
 candidateProfileSchema.methods.toPublic = function toPublic() {
@@ -87,6 +97,10 @@ candidateProfileSchema.methods.toPublic = function toPublic() {
     openToWork: this.openToWork,
     profileVisibility: this.profileVisibility,
     stealthMode: this.stealthMode,
+    availableToday: this.isAvailableToday(),
+    availableUntil: this.availableUntil,
+    openToConnect: this.openToConnect,
+    walkInAlerts: this.walkInAlerts,
     skills: this.skills,
     location: publicLocation(this.location),
     profileCompletion: this.profileCompletion,

@@ -11,6 +11,7 @@ import '../../data/models/people.dart';
 import '../../state/home_providers.dart';
 import '../../widgets/primary_cta.dart';
 import '../../widgets/tr_components.dart';
+import 'hiring_widgets.dart';
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -152,62 +153,6 @@ class QuickProfileSheet extends ConsumerStatefulWidget {
 }
 
 class _QuickProfileSheetState extends ConsumerState<QuickProfileSheet> {
-  bool _busy = false;
-
-  Future<void> _connect(CandidateDetail detail) async {
-    final note = await _askForNote(detail.card.name.split(' ').first);
-    if (note == null || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      final result = await ref
-          .read(socialRepositoryProvider)
-          .requestConnection(detail.card.userId, message: note);
-      ref.invalidate(_candidateDetailProvider(widget.userId));
-      ref.invalidate(connectionsProvider);
-      if (mounted) {
-        showTrSnack(
-          context,
-          result.status == ConnectionStatus.connected
-              ? 'You are now connected.'
-              : 'Request sent. We will let you know when they accept.',
-        );
-      }
-    } catch (error) {
-      if (mounted) showTrSnack(context, errorText(error));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<String?> _askForNote(String firstName) {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: TrColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: Text('Connect with $firstName', style: TrType.cardTitle),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          maxLength: 300,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Add a short note (optional)'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Cancel', style: TrType.chip.copyWith(color: TrColors.bodyMuted)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: Text('Send request', style: TrType.chip),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(_candidateDetailProvider(widget.userId));
@@ -231,12 +176,6 @@ class _QuickProfileSheetState extends ConsumerState<QuickProfileSheet> {
 
   Widget _content(CandidateDetail data) {
     final card = data.card;
-    final connectLabel = switch (data.connectionStatus) {
-      ConnectionStatus.connected => 'Connected',
-      ConnectionStatus.pendingSent => 'Request sent',
-      ConnectionStatus.pendingReceived => 'Accept request',
-      ConnectionStatus.none => 'Connect',
-    };
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -345,13 +284,15 @@ class _QuickProfileSheetState extends ConsumerState<QuickProfileSheet> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: PrimaryCta(
-                label: connectLabel,
-                isLoading: _busy,
-                enabled: data.openToConnect &&
-                    (data.connectionStatus == ConnectionStatus.none ||
-                        data.connectionStatus == ConnectionStatus.pendingReceived),
-                onPressed: () => _connect(data),
+              // The same control as the recruiter profile and search results,
+              // so a connection reads identically wherever it is shown.
+              child: ConnectionAction(
+                userId: card.userId,
+                name: card.name,
+                status: data.connectionStatus,
+                connectionId: data.connectionId,
+                enabled: data.openToConnect,
+                onChanged: () => ref.invalidate(_candidateDetailProvider(widget.userId)),
               ),
             ),
           ],

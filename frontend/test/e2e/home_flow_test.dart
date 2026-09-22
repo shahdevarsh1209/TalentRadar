@@ -1,120 +1,16 @@
 // Drives Jobs, Chats, Me and the centre action through the real UI against a
 // running API seeded with demo data:
 //
-//   cd backend && npm run dev:memory
-//   cd frontend && flutter test test/e2e/home_flow_test.dart --dart-define=TR_E2E=true
+//   cd backend && npm run dev:local
+//   cd frontend && flutter test test/e2e --dart-define=TR_E2E=true
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:talentradar/main.dart';
 import 'package:talentradar/widgets/tr_components.dart';
 
-const bool _enabled = bool.fromEnvironment('TR_E2E');
-const String _api = 'http://localhost:4000/api/v1';
-const String _password = 'StrongPass123';
-
-Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body, {String? token}) async {
-  final response = await http.post(
-    Uri.parse('$_api$path'),
-    headers: {'Content-Type': 'application/json', if (token != null) 'Authorization': 'Bearer $token'},
-    body: jsonEncode(body),
-  );
-  return jsonDecode(response.body) as Map<String, dynamic>;
-}
-
-Future<Map<String, dynamic>> _put(String path, Map<String, dynamic> body, String token) async {
-  final response = await http.put(
-    Uri.parse('$_api$path'),
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-    body: jsonEncode(body),
-  );
-  return jsonDecode(response.body) as Map<String, dynamic>;
-}
-
-/// A fresh, verified candidate in HSR Layout — next to the demo recruiters.
-Future<String> _createCandidate(String email, String name) async {
-  final registered = await _post('/auth/register/candidate', {
-    'name': name,
-    'email': email,
-    'password': _password,
-    'jobTitleCodes': ['JT_042', 'JT_040'],
-    'workModes': ['onsite', 'hybrid'],
-    'openToWork': 'actively_looking',
-  });
-  final data = registered['data'] as Map<String, dynamic>;
-  final token = data['token'] as String;
-  final userId = (data['user'] as Map<String, dynamic>)['userId'] as String;
-  final code = (data['verification'] as Map<String, dynamic>)['devCode'] as String;
-  await _post('/auth/verify-email', {'userId': userId, 'code': code});
-  await _put('/candidates/me/location', {'source': 'manual', 'area': 'HSR Layout', 'city': 'Bengaluru'}, token);
-  return token;
-}
-
-Future<void> pumpUntil(WidgetTester tester, Finder finder, {Duration timeout = const Duration(seconds: 25)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
-    await tester.pump(const Duration(milliseconds: 120));
-    if (finder.evaluate().isNotEmpty) {
-      await tester.pump(const Duration(milliseconds: 600));
-      return;
-    }
-  }
-  // Show what was on screen instead, so a failure explains itself.
-  final visible = find
-      .byType(Text)
-      .evaluate()
-      .map((element) => (element.widget as Text).data)
-      .whereType<String>()
-      .take(25)
-      .join(' | ');
-  throw TestFailure('Timed out waiting for $finder. On screen: $visible');
-}
-
-Future<void> tapVisible(WidgetTester tester, Finder finder) async {
-  FocusManager.instance.primaryFocus?.unfocus();
-  await tester.pump(const Duration(milliseconds: 300));
-  await tester.ensureVisible(finder.first);
-  await tester.pump(const Duration(seconds: 1));
-  await tester.tap(finder.first);
-  await tester.pump();
-}
-
-/// Lets real network calls complete between frames for [seconds].
-Future<void> settle(WidgetTester tester, {int seconds = 2}) async {
-  for (var i = 0; i < seconds * 4; i++) {
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
-    await tester.pump(const Duration(milliseconds: 250));
-  }
-}
-
-Future<void> bootAndLogin(WidgetTester tester, {required String email, required bool recruiter}) async {
-  HttpOverrides.global = null;
-  SharedPreferences.setMockInitialValues({});
-  tester.view.physicalSize = const Size(412 * 2.625, 892 * 2.625);
-  tester.view.devicePixelRatio = 2.625;
-  addTearDown(tester.view.reset);
-
-  await tester.pumpWidget(ProviderScope(key: UniqueKey(), child: const TalentRadarApp()));
-  await pumpUntil(tester, find.text('Get started'));
-  await tester.tap(find.text('Log in').first);
-  await pumpUntil(tester, find.text('CONTINUE AS'));
-  if (recruiter) await tapVisible(tester, find.text('HR / Recruiter'));
-  await tester.enterText(find.widgetWithText(TextField, 'you@example.com'), email);
-  await tester.enterText(find.widgetWithText(TextField, 'Your password'), recruiter ? 'Demo@1234' : _password);
-  await tapVisible(tester, find.text(recruiter ? 'Continue as recruiter' : 'Continue as candidate'));
-}
-
-Future<void> finish(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox.shrink());
-  await settle(tester, seconds: 3);
-}
+import 'support/e2e.dart';
 
 void main() {
   final stamp = DateTime.now().millisecondsSinceEpoch;
@@ -123,9 +19,9 @@ void main() {
   final candidateName = 'Meera ${String.fromCharCodes('$stamp'.substring(7).codeUnits.map((unit) => unit + 49))}';
 
   setUpAll(() async {
-    if (!_enabled) return;
+    if (!e2eEnabled) return;
     HttpOverrides.global = null;
-    await _createCandidate(candidateEmail, candidateName);
+    await createCandidate(candidateEmail, candidateName);
   });
 
   testWidgets('candidate: radar → jobs → save → meet in person → chat → go live → stealth', (tester) async {
@@ -194,10 +90,10 @@ void main() {
     await pumpUntil(tester, find.textContaining('Stealth mode off.'));
 
     await finish(tester);
-  }, skip: !_enabled);
+  }, skip: !e2eEnabled);
 
   testWidgets('recruiter: talent radar → post walk-in → invite candidate', (tester) async {
-    await bootAndLogin(tester, email: 'riya.joshi@demo.talentradar.app', recruiter: true);
+    await bootAndLogin(tester, email: 'riya.joshi@demo.talentradar.app', recruiter: true, password: demoPassword);
 
     await pumpUntil(tester, find.text('Talent near you'));
     await pumpUntil(tester, find.text(candidateName));
@@ -235,7 +131,7 @@ void main() {
     expect(find.text('Awaiting reply'), findsOneWidget);
 
     await finish(tester);
-  }, skip: !_enabled);
+  }, skip: !e2eEnabled);
 
   testWidgets('candidate accepts the interview invite', (tester) async {
     await bootAndLogin(tester, email: candidateEmail, recruiter: false);
@@ -248,5 +144,5 @@ void main() {
     await pumpUntil(tester, find.textContaining('accepted the interview invite'));
     expect(find.text('Accepted'), findsOneWidget);
     await finish(tester);
-  }, skip: !_enabled);
+  }, skip: !e2eEnabled);
 }

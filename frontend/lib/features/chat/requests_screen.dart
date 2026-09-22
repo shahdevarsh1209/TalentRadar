@@ -8,11 +8,11 @@ import '../../core/theme/tr_theme.dart';
 import '../../core/theme/tr_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/chat.dart';
-import '../../data/models/enums.dart';
 import '../../data/models/people.dart';
 import '../../state/home_providers.dart';
 import '../../widgets/primary_cta.dart';
 import '../../widgets/tr_components.dart';
+import '../people/hiring_widgets.dart';
 import '../people/people_widgets.dart';
 
 /// "Requests" from the design: incoming requests with their note, then recent
@@ -61,9 +61,8 @@ class RequestsScreen extends ConsumerWidget {
                           subtitle: item.status == ConnectionStatus.connected
                               ? 'Connected${item.at == null ? '' : ' · ${Fmt.ago(item.at!)}'}'
                               : 'Request sent · pending',
-                          onTap: item.person.role == UserRole.candidate
-                              ? () => openQuickProfile(context, item.person.userId)
-                              : null,
+                          // Candidate or recruiter, the row opens their profile.
+                          onTap: () => openPersonProfile(context, item.person),
                           trailing: item.status == ConnectionStatus.connected
                               ? InkWell(
                                   onTap: () => messagePerson(context, ref, item.person.userId),
@@ -128,20 +127,26 @@ class _IncomingRequestState extends ConsumerState<_IncomingRequest> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              TrAvatar(initials: person.initials, seed: person.name, size: 48),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(person.name, style: TrType.itemTitle),
-                    Text(person.subtitle, style: TrType.itemMeta),
-                  ],
+          // Who is this? — decide from their profile before accepting.
+          InkWell(
+            onTap: () => openPersonProfile(context, person),
+            borderRadius: BorderRadius.circular(16),
+            child: Row(
+              children: [
+                TrAvatar(initials: person.initials, seed: person.name, size: 48),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(person.name, style: TrType.itemTitle),
+                      Text(person.subtitle, style: TrType.itemMeta),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const Icon(Icons.chevron_right_rounded, color: TrColors.icon, size: 20),
+              ],
+            ),
           ),
           if (widget.item.message.isNotEmpty) ...[
             const SizedBox(height: 14),

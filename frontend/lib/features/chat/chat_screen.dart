@@ -13,7 +13,8 @@ import '../../state/home_providers.dart';
 import '../../state/session_controller.dart';
 import '../../widgets/primary_cta.dart';
 import '../../widgets/tr_components.dart';
-import '../people/people_widgets.dart';
+import '../jobs/job_widgets.dart';
+import '../people/hiring_widgets.dart';
 import 'invite_composer_sheet.dart';
 
 /// One conversation. New messages arrive by polling every few seconds while the
@@ -194,7 +195,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         title: person == null
             ? const Text('Chat')
             : InkWell(
-                onTap: person.role == UserRole.candidate ? () => openQuickProfile(context, person.userId) : null,
+                // Whoever you are talking to, their identity opens their
+                // profile: a candidate's quick view, or the recruiter's page.
+                onTap: () => openPersonProfile(context, person),
                 child: Row(
                   children: [
                     TrAvatar(
@@ -229,6 +232,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
+          // What this conversation is about, when it started from a role.
+          if (_conversation?.jobId != null) _JobContextBar(jobId: _conversation!.jobId!),
           Expanded(child: _body(myId)),
           _Composer(
             controller: _composer,
@@ -326,17 +331,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 boxShadow: mine ? null : TrColors.cardShadow,
               ),
               child: Column(
+                // Sized to the text, not to the 78% cap: a one-word message
+                // gets a one-word bubble. An Align here would fill the width.
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SelectableText(
-                      message.text,
-                      style: TrType.bodyText.copyWith(
-                        fontSize: 13.5,
-                        height: 1.45,
-                        color: mine ? Colors.white : TrColors.plumInk,
-                      ),
+                  SelectableText(
+                    message.text,
+                    style: TrType.bodyText.copyWith(
+                      fontSize: 13.5,
+                      height: 1.45,
+                      color: mine ? Colors.white : TrColors.plumInk,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -353,6 +358,70 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         );
     }
+  }
+}
+
+/// The role this conversation is about, pinned above the messages.
+///
+/// It reads the live job, so a role closed since the chat started says so here
+/// rather than leaving the candidate to find out at the door.
+class _JobContextBar extends ConsumerWidget {
+  const _JobContextBar({required this.jobId});
+
+  final String jobId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final job = ref.watch(jobPreviewProvider(jobId));
+
+    return job.maybeWhen(
+      data: (data) => Material(
+        color: TrColors.plumSurface,
+        child: InkWell(
+          onTap: () => openJobDetailsById(context, jobId),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 11, 14, 11),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data.title.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TrType.itemTitle.copyWith(fontSize: 13.5, color: TrColors.plumInk),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        [
+                          data.companyName,
+                          if (data.isOpen)
+                            Fmt.plural(data.openings, 'opening')
+                          else
+                            'Closed',
+                          if (data.isWalkIn && data.walkIn != null)
+                            'Walk-in ${Fmt.day(data.walkIn!.date)}',
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TrType.itemMeta.copyWith(fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text('View', style: TrType.chip.copyWith(fontSize: 12)),
+                const Icon(Icons.chevron_right_rounded, size: 18, color: TrColors.plumInk),
+              ],
+            ),
+          ),
+        ),
+      ),
+      // Nothing is shown until it loads, so the bar never flashes empty.
+      orElse: () => const SizedBox.shrink(),
+    );
   }
 }
 

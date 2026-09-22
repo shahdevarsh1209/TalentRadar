@@ -11,6 +11,7 @@ import '../../data/models/chat.dart';
 import '../../state/home_providers.dart';
 import '../../state/session_controller.dart';
 import '../../widgets/tr_components.dart';
+import '../people/hiring_widgets.dart';
 
 class ChatsTab extends ConsumerWidget {
   const ChatsTab({super.key});
@@ -145,7 +146,17 @@ class _ConversationRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            TrAvatar(initials: person.initials, seed: person.name, size: 46, live: person.availableToday),
+            // The row opens the conversation; the avatar opens who it is with.
+            InkWell(
+              onTap: () => openPersonProfile(context, person),
+              customBorder: const CircleBorder(),
+              child: TrAvatar(
+                initials: person.initials,
+                seed: person.name,
+                size: 46,
+                live: person.availableToday,
+              ),
+            ),
             const SizedBox(width: 13),
             Expanded(
               child: Column(

@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/tr_colors.dart';
 import '../../core/theme/tr_typography.dart';
-import '../../data/models/enums.dart';
 import '../../state/home_providers.dart';
 import '../../state/session_controller.dart';
 import '../../widgets/tr_components.dart';
 import '../jobs/job_widgets.dart';
+import '../people/hiring_widgets.dart';
 import '../people/people_widgets.dart';
 
 /// "Saved" from the design: Jobs and People tabs.
@@ -114,10 +114,8 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                           for (final person in data.people) ...[
                             PersonRow(
                               person: person,
-                              onTap: person.role == UserRole.candidate
-                                  ? () =>
-                                        openQuickProfile(context, person.userId)
-                                  : null,
+                              // Saved recruiters open their profile too.
+                              onTap: () => openPersonProfile(context, person),
                               trailing: IconButton(
                                 tooltip: 'Remove from saved',
                                 icon: const Icon(

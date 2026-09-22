@@ -100,6 +100,9 @@ class _RecruiterRadarTabState extends ConsumerState<RecruiterRadarTab> {
               _search.clear();
               setState(() => _query = _query.copyWith(q: ''));
             },
+            // The inline field narrows the radar; this opens the full search,
+            // with skills, availability and the rest of the filters.
+            onAdvanced: () => context.push(Routes.search),
           ),
           const SizedBox(height: 16),
           if (location == null) ...[
@@ -202,11 +205,17 @@ class _RecruiterRadarTabState extends ConsumerState<RecruiterRadarTab> {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onSubmitted, required this.onClear});
+  const _SearchField({
+    required this.controller,
+    required this.onSubmitted,
+    required this.onClear,
+    required this.onAdvanced,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
+  final VoidCallback onAdvanced;
 
   @override
   Widget build(BuildContext context) {
@@ -219,13 +228,22 @@ class _SearchField extends StatelessWidget {
         prefixIcon: const Icon(Icons.search_rounded, size: 18),
         suffixIcon: ValueListenableBuilder<TextEditingValue>(
           valueListenable: controller,
-          builder: (context, value, _) => value.text.isEmpty
-              ? const SizedBox.shrink()
-              : IconButton(
+          builder: (context, value, _) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (value.text.isNotEmpty)
+                IconButton(
                   tooltip: 'Clear search',
                   icon: const Icon(Icons.close_rounded, size: 18),
                   onPressed: onClear,
                 ),
+              IconButton(
+                tooltip: 'Search and filters',
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                onPressed: onAdvanced,
+              ),
+            ],
+          ),
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(100)),
         enabledBorder: OutlineInputBorder(

@@ -35,6 +35,9 @@ abstract final class Fmt {
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  /// "Sept 2025" — for "on TalentRadar since".
+  static String monthYear(DateTime date) => '${_months[date.month - 1]} ${date.year}';
+
   /// "Today", "Tomorrow" or "Thu, 25 Sept".
   static String day(DateTime date) {
     final now = DateTime.now();

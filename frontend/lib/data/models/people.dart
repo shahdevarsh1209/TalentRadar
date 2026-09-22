@@ -13,6 +13,8 @@ class PersonSummary {
     this.headline = '',
     this.subtitle = '',
     this.companyName = '',
+    this.companyId = '',
+    this.area = '',
     this.availableToday = false,
   });
 
@@ -23,6 +25,10 @@ class PersonSummary {
   final String headline;
   final String subtitle;
   final String companyName;
+
+  /// Set for recruiters, so any card showing one can open the company profile.
+  final String companyId;
+  final String area;
   final bool availableToday;
 
   factory PersonSummary.fromJson(Map<String, dynamic>? json) {
@@ -35,6 +41,8 @@ class PersonSummary {
       headline: '${data['headline'] ?? ''}',
       subtitle: '${data['subtitle'] ?? ''}',
       companyName: '${data['companyName'] ?? ''}',
+      companyId: '${data['companyId'] ?? ''}',
+      area: '${data['area'] ?? ''}',
       availableToday: data['availableToday'] == true,
     );
   }

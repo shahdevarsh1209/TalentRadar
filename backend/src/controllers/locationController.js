@@ -6,6 +6,7 @@ const Company = require('../models/Company');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../middleware/asyncHandler');
 const { blurCoordinates } = require('../models/location');
+const { PLACES, findPlace } = require('../seed/places.data');
 const {
   sessionPayload,
   candidateCompletion,
@@ -30,6 +31,14 @@ function buildLocation(input, { defaultRadiusKm = 2 } = {}) {
     label: input.label || [input.area, input.city].filter(Boolean).join(', '),
     updatedAt: new Date(),
   };
+
+  // A manual pick of a known area still gets its centre, so distances work.
+  if (typeof input.latitude !== 'number' && input.source === 'manual') {
+    const place = findPlace(input.area, input.city);
+    if (place) {
+      input = { ...input, latitude: place.latitude, longitude: place.longitude };
+    }
+  }
 
   if (typeof input.latitude === 'number' && typeof input.longitude === 'number') {
     location.precise = { type: 'Point', coordinates: [input.longitude, input.latitude] };
@@ -93,35 +102,14 @@ const setHiringLocation = asyncHandler(async (req, res) => {
   res.json({ success: true, data: payload });
 });
 
-/**
- * Manual-entry fallback for a denied location permission. Static for now; the
- * client only needs the shape to stay the same when this hits a places API.
- */
-const CITY_DIRECTORY = [
-  { city: 'Bengaluru', state: 'Karnataka', areas: ['HSR Layout', 'Koramangala', 'Indiranagar', 'Whitefield', 'Bellandur', 'Jayanagar', 'Marathahalli', 'Electronic City'] },
-  { city: 'Ahmedabad', state: 'Gujarat', areas: ['Satellite', 'Bodakdev', 'Prahlad Nagar', 'SG Highway', 'Maninagar', 'Vastrapur', 'Navrangpura'] },
-  { city: 'Mumbai', state: 'Maharashtra', areas: ['Andheri East', 'Bandra Kurla Complex', 'Powai', 'Lower Parel', 'Thane', 'Navi Mumbai'] },
-  { city: 'Pune', state: 'Maharashtra', areas: ['Hinjewadi', 'Kharadi', 'Baner', 'Viman Nagar', 'Magarpatta'] },
-  { city: 'Hyderabad', state: 'Telangana', areas: ['HITEC City', 'Gachibowli', 'Madhapur', 'Kondapur', 'Banjara Hills'] },
-  { city: 'Delhi', state: 'Delhi', areas: ['Connaught Place', 'Saket', 'Dwarka', 'Rohini', 'Nehru Place'] },
-  { city: 'Gurugram', state: 'Haryana', areas: ['Cyber City', 'Golf Course Road', 'Udyog Vihar', 'Sohna Road'] },
-  { city: 'Noida', state: 'Uttar Pradesh', areas: ['Sector 62', 'Sector 125', 'Sector 16', 'Greater Noida'] },
-  { city: 'Chennai', state: 'Tamil Nadu', areas: ['OMR', 'Guindy', 'T Nagar', 'Velachery', 'Ambattur'] },
-  { city: 'Kolkata', state: 'West Bengal', areas: ['Salt Lake Sector V', 'New Town', 'Park Street', 'Howrah'] },
-  { city: 'Jaipur', state: 'Rajasthan', areas: ['Malviya Nagar', 'Vaishali Nagar', 'C Scheme', 'Mansarovar'] },
-  { city: 'Indore', state: 'Madhya Pradesh', areas: ['Vijay Nagar', 'Palasia', 'Rau', 'Scheme 78'] },
-  { city: 'Surat', state: 'Gujarat', areas: ['Adajan', 'Vesu', 'Piplod', 'Katargam'] },
-  { city: 'Kochi', state: 'Kerala', areas: ['Infopark', 'Kakkanad', 'Edappally', 'Fort Kochi'] },
-  { city: 'Chandigarh', state: 'Chandigarh', areas: ['IT Park', 'Sector 17', 'Mohali', 'Panchkula'] },
-];
-
+/** City / area suggestions for the manual picker, each with its centre point. */
 const searchLocations = asyncHandler(async (req, res) => {
   const query = String(req.query.q || '').trim().toLowerCase();
 
   const results = [];
-  CITY_DIRECTORY.forEach((entry) => {
+  PLACES.forEach((entry) => {
     const cityMatches = !query || entry.city.toLowerCase().includes(query);
-    entry.areas.forEach((area) => {
+    Object.entries(entry.areas).forEach(([area, [latitude, longitude]]) => {
       if (cityMatches || area.toLowerCase().includes(query)) {
         results.push({
           area,
@@ -129,6 +117,8 @@ const searchLocations = asyncHandler(async (req, res) => {
           state: entry.state,
           country: 'India',
           label: `${area}, ${entry.city}`,
+          latitude,
+          longitude,
         });
       }
     });
@@ -139,6 +129,8 @@ const searchLocations = asyncHandler(async (req, res) => {
         state: entry.state,
         country: 'India',
         label: `${entry.city}, ${entry.state}`,
+        latitude: entry.center[0],
+        longitude: entry.center[1],
       });
     }
   });

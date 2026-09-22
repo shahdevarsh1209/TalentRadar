@@ -8,8 +8,12 @@ import '../../features/chat/requests_screen.dart';
 import '../../features/home/home_shell.dart';
 import '../../features/jobs/search_screen.dart';
 import '../../features/onboarding/splash_screen.dart';
+import '../../features/people/company_view_screen.dart';
+import '../../features/people/recruiter_profile_screen.dart';
 import '../../features/onboarding/welcome_screen.dart';
+import '../../features/profile/blocked_screen.dart';
 import '../../features/profile/company_profile_screen.dart';
+import '../../features/profile/help_screen.dart';
 import '../../features/profile/edit_profile_screen.dart';
 import '../../features/profile/privacy_screen.dart';
 import '../../features/profile/saved_screen.dart';
@@ -44,9 +48,15 @@ abstract final class Routes {
   static const String privacy = '/privacy';
   static const String editProfile = '/profile/edit';
   static const String company = '/company';
+  static const String blocked = '/privacy/blocked';
+  static const String help = '/help';
 
   static String chat(String conversationId) => '/chat/$conversationId';
   static String jobInterests(String jobId) => '/roles/$jobId/interests';
+
+  /// The recruiter behind a job, chat or search result, and their company.
+  static String recruiter(String userId) => '/recruiter/$userId';
+  static String companyProfile(String companyId) => '/company/$companyId';
 
   /// Location screens reused from the Me tab return there instead of
   /// continuing the onboarding flow.
@@ -64,8 +74,12 @@ const _protected = [
   Routes.privacy,
   Routes.editProfile,
   Routes.company,
+  Routes.blocked,
+  Routes.help,
   '/chat/',
   '/roles/',
+  '/recruiter/',
+  '/company/',
 ];
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -118,6 +132,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.privacy, builder: (context, state) => const PrivacyScreen()),
       GoRoute(path: Routes.editProfile, builder: (context, state) => const EditProfileScreen()),
       GoRoute(path: Routes.company, builder: (context, state) => const CompanyProfileScreen()),
+      GoRoute(path: Routes.blocked, builder: (context, state) => const BlockedScreen()),
+      GoRoute(path: Routes.help, builder: (context, state) => const HelpScreen()),
       GoRoute(
         path: '/chat/:conversationId',
         builder: (context, state) =>
@@ -129,6 +145,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/roles/:jobId/interests',
         builder: (context, state) => JobInterestsScreen(jobId: state.pathParameters['jobId']!),
+      ),
+      GoRoute(
+        path: '/recruiter/:userId',
+        builder: (context, state) =>
+            RecruiterProfileScreen(userId: state.pathParameters['userId']!),
+      ),
+      GoRoute(
+        path: '/company/:companyId',
+        builder: (context, state) =>
+            CompanyViewScreen(companyId: state.pathParameters['companyId']!),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
